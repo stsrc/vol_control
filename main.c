@@ -35,7 +35,7 @@ struct IR_struct{
 	uint8_t bit;
 	uint8_t ignore;
 	uint8_t data[14];
-}
+};
 
 struct IR_struct IR = {
 	.state = 0,
@@ -259,8 +259,8 @@ inline uint8_t IR_test_if_shorter_gap(){
 }
 
 inline void case4_algorithm(){
-	if ( ignore ){
-		ignore = 0;
+	if ( IR.ignore ){
+		IR.ignore = 0;
 		INT_turn_edge();
 		break;
 	}
@@ -268,7 +268,7 @@ inline void case4_algorithm(){
 		if ( !INT_as_rising_edge() ){
 			if ( IR_test_if_shorter_gap() ){
 				IR.data[IR.bit] = 0;
-				ignore = 1;
+				IR.ignore = 1;
 			} else {
 				IR.data[IR.bit] = 1;
 			}
@@ -277,7 +277,7 @@ inline void case4_algorithm(){
 		if ( INT_as_rising_edge() ){
 			if( IR_test_if_shorter_gap() ){
 				IR.data[IR.bit] = 1;
-				ignore = 1;
+				IR.ignore = 1;
 			} else {
 				OR.data[IR.bit] = 0;
 			}
@@ -325,7 +325,7 @@ ISR(INT1_vect)
 		INT_turn_edge();
 		if ( IR_test_if_shorter_gap() )
 			IR.data[IR.bit] = 1;
-			ignore = 1;
+			IR.ignore = 1;
 		else
 			IR.data[IR.bit] = 0;
 		break;
@@ -337,7 +337,6 @@ err:
 	IR.state = 0;
 	IR.bit = 0;
 	IR.time = 0;
-	IR.toggle = 0;
 	INT_on_falling_edge();
 }
 
