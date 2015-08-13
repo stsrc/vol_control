@@ -32,8 +32,9 @@ struct IR_struct{
 	uint8_t state;
 	uint8_t time;
 	uint8_t time_limit;
-	uint8_t bit_cnt;
-	uint8_t halfbit;
+	uint8_t bit;
+	uint8_t ignore;
+	uint8_t data[14];
 }
 
 struct IR_struct IR = {
@@ -48,7 +49,7 @@ struct IR_struct IR = {
 	 */
 	.time_limit = 167,
 	.bit = 0,
-	.halfbit = 0
+	.ignore = 0
 };
 volatile int8_t volume = 0;
 volatile uint8_t steps = 0;
@@ -169,25 +170,31 @@ void my_stupidity_2()
 	CS_HIGH();
 }
 
+inline void timer0_reset_val()
+{
+	TCNT0 = 0;
+}
+
 void timer0_on()
 {
 	/*clkio/64 (from prescaler)*/
 	TCCR0 |= _BV(CS01) | _BV(CS00);
 	/*Interrupt will present end of IR transmission*/
 	TIMSK |= _BV(TOIE0);
+	timer0_reset_val();
 }
 
 void timer0_off()
 {
 	/*no clock source*/
-	TCCR0 &= ~(BV(CS02) | _BV(CS01) | _BV(CS00));
+	TCCR0 &= ~(_BV(CS02) | _BV(CS01) | _BV(CS00));
 	/*Interrupt off*/
 	TIMSK &= ~_BV(TOIE0);
 }
 
-inline void timer0_get_val()
+inline void timer0_get_val(uint8_t *value)
 {
-	timer0_val = TCNT0;	
+	*value = TCNT0;	
 }
 
 void IR_init()
@@ -214,6 +221,13 @@ inline void INT_on_rising_edge()
 	MCUCR |= _BV(ISC10);
 }
 
+//TODO: DO IT AS MACRO
+inline uint8_t INT_as_rising_edge(){
+	if(MCUCR & _BV(ISC10))
+		return 1;
+	return 0;
+}
+
 int main(void)
 {
 	pins_init();
@@ -234,76 +248,96 @@ ISR(TIMER1_COMPB_vect)
 }
 
 inline uint8_t IR_test_if_shorter_gap(){
-	if(IR.time <= IR.time_limit){
-		IR.time = 0;
-		return 1;
-	}
-	else{
-		IR.time = 0;
-	}
-	return 0;
+	uint8_t rt;
+	timer0_get_val(&IR.time);
+	if(IR.time <= IR.time_limit)
+		rt = 1;
+	else
+		rt = 0;
+	timer0_reset_val();
+	return rt;
 }
-uint8_t IR_change_to_new_state(){
-	switch(IR.state){
-	case 0:
-		if(IR.halfbit)
-		IR.state = 1;
-		return 0;
+
+inline void case4_algorithm(){
+	if ( ignore ){
+		ignore = 0;
+		INT_turn_edge();
 		break;
-	case 1:
-		if (IR_test_if_shorter_gap()) {
-			IR_state = 2;
-			return 0;
-		} else {
-			return 1;
+	}
+	if ( IR.data[IR.bit - 1] == 0 ){
+		if ( !INT_as_rising_edge() ){
+			if ( IR_test_if_shorter_gap() ){
+				IR.data[IR.bit] = 0;
+				ignore = 1;
+			} else {
+				IR.data[IR.bit] = 1;
+			}
 		}
-		break;
-	case 2:
-		IR_state = 3;
-		if (IR_test_if_shorter_gap
-
-	default:
-		return 1;
-		break;
+	} else {
+		if ( INT_as_rising_edge() ){
+			if( IR_test_if_shorter_gap() ){
+				IR.data[IR.bit] = 1;
+				ignore = 1;
+			} else {
+				OR.data[IR.bit] = 0;
+			}
+		}
 	}
-}
-
-void IR_increase_halfbit(){
-	IR.halfbit++;
-	if(IR.halfbit == 2){
-		IR.halfbit = 0;
-		IR.bit++;
+	INT_turn_edge();
+	IR.bit++;
+	if(IR.bit == IR.bit_limit){
+		IR.state = 0;
+		IR.bit = 0;
+		INT_on_falling_edge();	
 	}
 }
 
 ISR(INT1_vect)
 {
-	IR_increase_halfbit();
 	switch(IR.state){
 	case 0:
-		IR.time = 0;
 		timer0_on();
-		if(IR_change_to_new_state())
-			goto err;
+		INT_on_rising_edge();
+		IR.state = 1;
+		IR.data[IR.bit] = 1;
+		IR.bit++;
 		break;
 	case 1:
-		IR_bit = 2;
-		timer0_get_val(); //TODO ATOMIC OR INTERRUPT PRIORITES!!
-		if(IR_change_to_new_state())
+		if(IR_test_if_shorter_gap()){
+			INT_on_falling_edge();
+			IR.state = 2;
+			IR.data[IR.bit] = 1;
+			IR.bit++;
+		} else {
 			goto err;
+		}
 		break;
 	case 2:
-		IR_bit = 3;
-		timer0_get_val();
-		if(IR_change_to_new_state())
+		if(IR_test_if_shorter_gap()){
+			INT_on_rising_edge();
+			IR.state = 3;
+		} else {
 			goto err;
+		}
 		break;
+	case 3:
+		IR.state = 4;
+		INT_turn_edge();
+		if ( IR_test_if_shorter_gap() )
+			IR.data[IR.bit] = 1;
+			ignore = 1;
+		else
+			IR.data[IR.bit] = 0;
+		break;
+	case 4: 
+		case4_algorithm();
 	}
+			
 err:
 	IR.state = 0;
 	IR.bit = 0;
 	IR.time = 0;
-	IR.halfbit = 0;
+	IR.toggle = 0;
 	INT_on_falling_edge();
 }
 
