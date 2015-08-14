@@ -10,6 +10,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <util/atomic.h>
 #include <stdlib.h>
 #define CS PB0
 #define UD PB2
@@ -27,6 +28,12 @@
 #define UD_HIGH() PORTB |= _BV(UD)
 #define REL_1_1() PORTB |= _BV(REL_1)
 #define REL_1_0() PORTB &= ~_BV(REL_1)
+
+#define PREAMP_CODE 19
+#define CHANNEL_1 1
+#define CHANNEL_2 2
+#define VOL_INCREASE 16
+#define VOL_DECREASE 17
 
 struct IR_struct{
 	uint8_t state;
@@ -56,7 +63,7 @@ struct IR_struct IR = {
 	/*with overflow flag set*/
 	.time_higher_limit = 77,
 	.bit = 0,
-	.ignore = 0,
+	.ignore = 1,
 	.bit_limit = 14
 };
 volatile int8_t volume = 0;
@@ -213,6 +220,64 @@ inline uint8_t INT_as_rising_edge(){
 	return 0;
 }
 
+inline uint8_t IR_get_toggle(){
+	return IR.data[2];
+}
+
+inline uint8_t IR_get_device(){
+	uint8_t device = 0;
+	for (uint8_t it = 3; it < 8; it++) {
+		if (IR.data[it]) 
+			device |= 1;
+		if(it != 7)
+			device = device << 1;
+	}
+	return device;
+}
+
+inline uint8_t IR_get_instruction(){
+	uint8_t instruction = 0;
+	for (uint8_t it = 8; it < 14; it++) {
+		if(IR.data[it])
+			instruction |= 1;
+		if(it != 13)
+			instruction = instruction << 1;
+	}
+	return instruction;
+}
+
+uint8_t IR_perform_action(){
+	uint8_t toggle, device, instruction;
+	if(IR.ignore)
+		return 1;
+	ATOMIC_BLOCK(ATOMIC_FORCEON){
+		IR.ignore = 1;
+		toggle = IR_get_toggle();
+		device = IR_get_device();
+		instruction = IR_get_instruction();	
+	}
+	if(device != PREAMP_CODE)
+		return 1;
+	switch(instruction){
+	case CHANNEL_1:
+		REL_1_0();
+		break;
+	case CHANNEL_2:
+		REL_1_1();
+		break;
+	case VOL_INCREASE:
+		VOL_increase(1);
+		break;
+	case VOL_DECREASE:
+		VOL_decrease(1);
+		break;
+	default:
+		return 1;
+	}
+	return 0;
+}
+
+
 int main(void)
 {
 	pins_init();
@@ -220,6 +285,7 @@ int main(void)
 	_delay_ms(500);
 	VOL_increase(0x3F);
 	while(1){
+		IR_perform_action();
 	}
 	return 0;
 }
@@ -278,6 +344,7 @@ inline int8_t case4_algorithm(){
 	INT_turn_edge();
 	IR.bit++;
 	if(IR.bit == IR.bit_limit){
+		IR.ignore = 0;
 		IR.state = 0;
 		IR.bit = 0;
 		INT_on_falling_edge();	
@@ -298,6 +365,7 @@ ISR(INT1_vect)
 	}
 	switch(IR.state){
 	case 0:
+		IR.ignore = 1;
 		timer0_on();
 		INT_on_rising_edge();
 		IR.state = 1;
@@ -349,6 +417,7 @@ err:
 	IR.state = 0;
 	IR.bit = 0;
 	IR.time = 0;
+	IR.ignore = 1;
 	INT_on_falling_edge();
 }
 
