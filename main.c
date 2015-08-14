@@ -32,9 +32,12 @@ struct IR_struct{
 	uint8_t state;
 	uint8_t time;
 	uint8_t time_limit;
+	uint8_t time_lower_limit;
+	uint8_t time_higher_limit;
 	uint8_t bit;
 	uint8_t ignore;
 	uint8_t data[14];
+	uint8_t bit_limit;
 };
 
 struct IR_struct IR = {
@@ -48,8 +51,13 @@ struct IR_struct IR = {
 	 * 1333.5us/8us = 166.6875 => 167
 	 */
 	.time_limit = 167,
+	/*time_lower_limit - treshold for half bit time, equal to 0.5*time of halfbit.*/
+	.time_lower_limit = 55,
+	/*with overflow flag set*/
+	.time_higher_limit = 77,
 	.bit = 0,
-	.ignore = 0
+	.ignore = 0,
+	.bit_limit = 14
 };
 volatile int8_t volume = 0;
 volatile uint8_t steps = 0;
@@ -139,62 +147,39 @@ void pins_init()
 	CS_HIGH();
 }
 
-void my_stupidity()
-{
-	UD_HIGH();
-	_delay_ms(1);
-	CS_LOW();
-	_delay_ms(1);
-	for(uint8_t it = 0; it < 0x40/2; it++){
-		UD_LOW();
-		_delay_ms(1);
-		UD_HIGH();
-		_delay_ms(1);
-	}
-	CS_HIGH();
-}
-
-
-void my_stupidity_2()
-{
-	UD_LOW();
-	_delay_ms(1);
-	CS_LOW();
-	_delay_ms(1);
-	for(uint8_t it = 0; it < 0x40/2; it++){
-		UD_HIGH();
-		_delay_ms(1);
-		UD_LOW();
-		_delay_ms(1);
-	}
-	CS_HIGH();
-}
-
 inline void timer0_reset_val()
 {
 	TCNT0 = 0;
+	TIFR |= _BV(TOV0);
 }
 
 void timer0_on()
 {
+	timer0_reset_val();
 	/*clkio/64 (from prescaler)*/
 	TCCR0 |= _BV(CS01) | _BV(CS00);
-	/*Interrupt will present end of IR transmission*/
-	TIMSK |= _BV(TOIE0);
-	timer0_reset_val();
+	sei();
 }
 
 void timer0_off()
 {
 	/*no clock source*/
 	TCCR0 &= ~(_BV(CS02) | _BV(CS01) | _BV(CS00));
-	/*Interrupt off*/
-	TIMSK &= ~_BV(TOIE0);
 }
 
-inline void timer0_get_val(uint8_t *value)
+inline void timer0_init(){
+	timer0_on();
+}
+
+inline uint8_t timer0_get_val(uint8_t *value)
 {
+	uint8_t rt = 0;
 	*value = TCNT0;	
+	/* overflow situation*/
+	if (TIFR & _BV(TOV0))
+		rt = 1;
+	timer0_reset_val();
+	return rt;
 }
 
 void IR_init()
@@ -247,39 +232,46 @@ ISR(TIMER1_COMPB_vect)
 		VOL_stop_changing();
 }
 
-inline uint8_t IR_test_if_shorter_gap(){
-	uint8_t rt;
-	timer0_get_val(&IR.time);
-	if(IR.time <= IR.time_limit)
-		rt = 1;
-	else
-		rt = 0;
-	timer0_reset_val();
-	return rt;
+inline int8_t IR_test_if_shorter_gap(){
+	if (timer0_get_val(&IR.time)) {
+		if (IR.time > IR.time_higher_limit)
+			return -1;
+		else
+			return 0;
+	} else {
+		if (IR.time > IR.time_limit)
+			return 0;
+		else if ((IR.time >= IR.time_lower_limit) 
+				&& (IR.time <= IR.time_limit))
+			return 1;
+		else
+			return -1;
+	}
+	return -1;
 }
 
-inline void case4_algorithm(){
-	if ( IR.ignore ){
-		IR.ignore = 0;
-		INT_turn_edge();
-		break;
+inline int8_t case4_algorithm(){
+	int8_t shorter_gap = 0;
+	shorter_gap = IR_test_if_shorter_gap();
+	if (shorter_gap == -1) {
+		return -1;
 	}
-	if ( IR.data[IR.bit - 1] == 0 ){
-		if ( !INT_as_rising_edge() ){
-			if ( IR_test_if_shorter_gap() ){
+	if (IR.data[IR.bit - 1] == 0){
+		if (!INT_as_rising_edge()){
+			if (shorter_gap){
 				IR.data[IR.bit] = 0;
-				IR.ignore = 1;
+				IR.state = 5;
 			} else {
 				IR.data[IR.bit] = 1;
 			}
 		}
 	} else {
-		if ( INT_as_rising_edge() ){
-			if( IR_test_if_shorter_gap() ){
+		if (INT_as_rising_edge()){
+			if(shorter_gap){
 				IR.data[IR.bit] = 1;
-				IR.ignore = 1;
+				IR.state = 5;
 			} else {
-				OR.data[IR.bit] = 0;
+				IR.data[IR.bit] = 0;
 			}
 		}
 	}
@@ -290,20 +282,30 @@ inline void case4_algorithm(){
 		IR.bit = 0;
 		INT_on_falling_edge();	
 	}
+	return 0;
 }
 
 ISR(INT1_vect)
 {
+	int8_t shorter_gap = IR_test_if_shorter_gap();
+	if (shorter_gap == -1) {
+		/*Above function will return -1 if timer is off 
+		 * (what is possible for case 0).
+		 * Workaround is needed here.
+		 */
+		if (TCCR0 && (_BV(CS01) | _BV(CS00)))
+			goto err;
+	}
 	switch(IR.state){
 	case 0:
 		timer0_on();
 		INT_on_rising_edge();
 		IR.state = 1;
 		IR.data[IR.bit] = 1;
-		IR.bit++;
+		IR.bit = 1;
 		break;
 	case 1:
-		if(IR_test_if_shorter_gap()){
+		if(shorter_gap){
 			INT_on_falling_edge();
 			IR.state = 2;
 			IR.data[IR.bit] = 1;
@@ -313,7 +315,7 @@ ISR(INT1_vect)
 		}
 		break;
 	case 2:
-		if(IR_test_if_shorter_gap()){
+		if (shorter_gap) {
 			INT_on_rising_edge();
 			IR.state = 3;
 		} else {
@@ -321,16 +323,26 @@ ISR(INT1_vect)
 		}
 		break;
 	case 3:
-		IR.state = 4;
-		INT_turn_edge();
-		if ( IR_test_if_shorter_gap() )
+		if (shorter_gap) {
 			IR.data[IR.bit] = 1;
-			IR.ignore = 1;
-		else
+			IR.state = 5;
+		} else {
 			IR.data[IR.bit] = 0;
+			IR.state = 4;
+		}
+		IR.bit++;
+		INT_turn_edge();
 		break;
 	case 4: 
-		case4_algorithm();
+		if (case4_algorithm())
+			goto err;
+		break;
+	case 5:
+		INT_turn_edge();
+		timer0_reset_val();
+		IR.state = 4;
+	default:
+		goto err;
 	}
 			
 err:
@@ -340,8 +352,3 @@ err:
 	INT_on_falling_edge();
 }
 
-ISR(TIMER0_OVF_vect)
-{
-	timer0_off();
-	IR.state = 0;
-}
