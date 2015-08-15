@@ -1,7 +1,8 @@
 #ifndef _INT_H_
 #define _INT_H_
 
-#include <avr/interrupt.h>
+#include <stdio.h>
+#include <avr/io.h>
 
 uint8_t INT_as_rising_edge();
 void INT_turn_edge();

@@ -1,6 +1,5 @@
 #include "INT.h"
 
-//TODO: DO IT AS MACRO
 uint8_t INT_as_rising_edge()
 {
 	if(MCUCR & _BV(ISC10))
