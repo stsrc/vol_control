@@ -12,6 +12,10 @@
 #include <util/delay.h>
 #include <util/atomic.h>
 #include <stdlib.h>
+
+#include "timer2.h"
+#include "INT.h"
+
 #define CS PB0
 #define UD PB2
 #define REL_1 PB6
@@ -20,7 +24,11 @@
 #define IR_REMOTE PD3
 #define BTN2 PD5
 #define BTN1 PD6
-#define BTN0 PD7
+
+#define LED PD7
+#define LED_ON() PORTD |= _BV(LED)
+#define LED_OFF() PORTD &= ~_BV(LED)
+#define LED_SWITCH() PORTD ^= _BV(LED)
 
 #define CS_LOW() PORTB &= ~_BV(CS)
 #define CS_HIGH() PORTB |= _BV(CS)
@@ -29,7 +37,7 @@
 #define REL_1_1() PORTB |= _BV(REL_1)
 #define REL_1_0() PORTB &= ~_BV(REL_1)
 
-#define PREAMP_CODE 19
+#define PREAMP_CODE 0 /*like a TV, but it's only DIY-project, so doesn't metter.*/
 #define CHANNEL_1 1
 #define CHANNEL_2 2
 #define VOL_INCREASE 16
@@ -44,7 +52,7 @@ struct IR_struct{
 	volatile uint8_t bit;
 	volatile uint8_t ignore;
 	volatile uint8_t data[14];
-	volatile uint8_t bit_limit;
+	const uint8_t bit_limit;
 };
 
 struct IR_struct IR = {
@@ -59,15 +67,15 @@ struct IR_struct IR = {
 	 */
 	.time_limit = 167,
 	/*time_lower_limit - treshold for half bit time, equal to 0.5*time of halfbit.*/
-	.time_lower_limit = 0,
+	.time_lower_limit = 55,
 	/*with overflow flag set*/
-	.time_higher_limit = 255,
+	.time_higher_limit = 78,
 	.bit = 0,
 	.ignore = 1,
 	.bit_limit = 14
 };
 volatile int8_t volume = 0;
-volatile uint8_t steps = 0;
+volatile int8_t steps = 0;
 volatile int8_t direction = 0;
 
 inline void PWM_clear_on_compare_match()
@@ -86,24 +94,64 @@ inline void PWM_set_on_compare_match()
  */
 void PWM_stupid_turn_off()
 {	
+	TCCR1B &= ~_BV(CS11);
 	TIMSK &= ~_BV(OCIE1B);	
 	TCCR1A &= ~(_BV(COM1B1) | _BV(COM1B0));
 }
 
 void PWM_stupid_turn_on(int8_t direction)
-{
-	if (direction > 0)
+{	
+	if (direction ==  1)
 		PWM_clear_on_compare_match();
-	else 
+	else if (direction == -1)
 		PWM_set_on_compare_match();
 	TIMSK |= _BV(OCIE1B);
+	TCCR1B |= _BV(CS11);
+}
+
+void PWM_init()
+{
+	/*MODE 5, look to the datasheet, Waveform generation mode, p. 98 */
+	TCCR1A = _BV(WGM10);
+	TCCR1B = _BV(WGM12);
+	/*End of setting mode*/	
+	OCR1B = 128;	
+	PWM_stupid_turn_off();
+}
+
+inline void VOL_stop_changing()
+{
+	PWM_stupid_turn_off();
+	direction = 0; 
+	CS_HIGH();
 }
 
 void VOL_increase(uint8_t steps_vol)
 {
-	while(steps);
+	PWM_stupid_turn_off();
+	if (direction == -1){
+		steps -= steps_vol;
+		if (steps > 0) {
+			PWM_stupid_turn_on(direction);
+			return;
+		} else if (!steps) {
+			VOL_stop_changing();
+			return;
+		} else {
+			steps = steps*(-1);
+			CS_HIGH();
+			_delay_ms(1);
+		}
+	} else if (direction == 1) {
+		steps += steps_vol;
+		if (steps < 0) 
+			steps = 127;
+		PWM_stupid_turn_on(direction);
+		return;
+	} else {	
+		steps = steps_vol;
+	}
 	direction = 1;
-	steps = steps_vol;
 	UD_HIGH();
 	_delay_ms(1);
 	CS_LOW();
@@ -113,30 +161,35 @@ void VOL_increase(uint8_t steps_vol)
 
 void VOL_decrease(uint8_t steps_vol)
 {
-	while(steps);
+	PWM_stupid_turn_off();
+	if (direction == -1) {
+		steps += steps_vol;
+		if (steps < 0)
+			steps = 127;
+		PWM_stupid_turn_on(direction);
+		return;
+	} else if (direction == 1) {
+		steps -= steps_vol;
+		if (steps > 0) {
+			PWM_stupid_turn_on(direction);
+			return;
+		} else if (!steps) {
+			VOL_stop_changing();
+			return;
+		} else {
+			steps = steps*(-1);
+			CS_HIGH();
+			_delay_ms(1);
+		}
+	} else {
+		steps = steps_vol;
+	}
 	direction = -1;
-	steps = steps_vol;
 	UD_LOW();
 	_delay_ms(1);
 	CS_LOW();
 	_delay_ms(1);
 	PWM_stupid_turn_on(direction);
-}
-
-inline void VOL_stop_changing()
-{
-	PWM_stupid_turn_off();
-	CS_HIGH();
-}
-void PWM_init()
-{
-	/*MODE 5, look to the datasheet, Waveform generation mode, p. 98 */
-	TCCR1A = _BV(WGM10);
-	TCCR1B = _BV(WGM12);
-	/*End of setting mode*/	
-	TCCR1B |= _BV(CS11); //clkio/8 from prescaler
-	OCR1B = 128;	
-	PWM_stupid_turn_off();
 }
 
 void pins_init()
@@ -147,53 +200,14 @@ void pins_init()
 	PORTC = 0;
 	DDRD = 0xff;
 	PORTD = 0;
-	DDRD &= ~(_BV(BTN0) | _BV(BTN1) | _BV(BTN2));
+	DDRD &= ~(_BV(BTN1) | _BV(BTN2));
 	DDRD &= ~_BV(IR_REMOTE);
-	PORTD |= _BV(BTN0) | _BV(BTN1) | _BV(BTN2);
+
+	DDRD |= _BV(LED);
+
+	PORTD |= _BV(BTN1) | _BV(BTN2);
 	PORTD |= _BV(CUR_STAGE_MUTE);
 	CS_HIGH();
-}
-
-inline void timer2_reset()
-{
-	TIFR |= _BV(TOV2);
-	TCNT2 = 0;
-}
-
-inline void timer2_init()
-{
-	/*clkio/64 (from prescaler)*/
-	TCCR2 |= _BV(CS22);
-}
-
-inline uint8_t timer2_get_val(uint8_t *value)
-{
-	uint8_t rt = 0;
-	ATOMIC_BLOCK(ATOMIC_FORCEON){
-		*value = TCNT2;	
-		/* overflow situation*/
-		if (TIFR & _BV(TOV2))
-			rt = 1;
-		timer2_reset();
-	}
-	return rt;
-}
-
-inline void INT_turn_edge()
-{
-	MCUCR ^= _BV(ISC10);
-	MCUCR |= _BV(ISC11);
-}
-
-inline void INT_on_falling_edge()
-{
-	MCUCR |= _BV(ISC11);
-	MCUCR &= ~_BV(ISC10);
-}
-
-inline void INT_on_rising_edge()
-{
-	MCUCR |= _BV(ISC11) | _BV(ISC10);
 }
 
 void IR_init()
@@ -203,14 +217,6 @@ void IR_init()
 	timer2_init();
 	INT_on_falling_edge();
 	GICR |= _BV(INT1);
-}
-
-//TODO: DO IT AS MACRO
-inline uint8_t INT_as_rising_edge()
-{
-	if(MCUCR & _BV(ISC10))
-		return 1;
-	return 0;
 }
 
 inline uint8_t IR_get_toggle()
@@ -234,44 +240,42 @@ inline uint8_t IR_get_instruction()
 {
 	uint8_t instruction = 0;
 	for (uint8_t it = 8; it < 14; it++) {
-		if(IR.data[it])
+		if (IR.data[it])
 			instruction |= 1;
-		if(it != 13)
+		if (it != 13)
 			instruction = instruction << 1;
 	}
 	return instruction;
 }
 
+
 uint8_t IR_perform_action(){
 	uint8_t toggle, device, instruction;
-	if(IR.ignore)
-		return 1;
-	ATOMIC_BLOCK(ATOMIC_FORCEON){
-		IR.ignore = 1;
-		toggle = IR_get_toggle();
-		device = IR_get_device();
-		instruction = IR_get_instruction();	
-	
-	//	if(device != PREAMP_CODE)
-	//		return 1;
-		switch(instruction){
-		case CHANNEL_1:
-			REL_1_0();
-			break;
-		case CHANNEL_2:
-			REL_1_1();
-
-	break;
-		case VOL_INCREASE:
-			VOL_increase(1);
-			break;
-		case VOL_DECREASE:
-			VOL_decrease(1);
-			break;
-		default:
+	while(IR.ignore);
+	IR.ignore = 1;
+	toggle = IR_get_toggle();
+	device = IR_get_device();
+	instruction = IR_get_instruction();	
+		if(device != PREAMP_CODE)
 			return 1;
+	switch(instruction){
+	case CHANNEL_1:
+		REL_1_1();
+		LED_OFF();
+		break;
+	case CHANNEL_2:
+		REL_1_0();
+		LED_ON();
+		break;
+	case VOL_INCREASE:
+		VOL_increase(1);
+		break;
+	case VOL_DECREASE:
+		VOL_decrease(1);
+		break;
+	default:
+		return 1;
 		}
-	}
 	return 0;
 }
 
@@ -279,12 +283,12 @@ int main(void)
 {
 	pins_init();
 	PWM_init();
-	_delay_ms(500);
 	IR_init();
 	sei();
 	VOL_increase(0x3F);
+	LED_ON();
 	while(1){
-	//	IR_perform_action();
+		IR_perform_action();		
 	}
 	return 0;
 }
@@ -297,7 +301,8 @@ ISR(TIMER1_COMPB_vect, ISR_BLOCK)
 		VOL_stop_changing();
 }
 
-inline int8_t IR_test_if_shorter_gap(){
+inline int8_t IR_test_if_shorter_gap()
+{
 	if (timer2_get_val(&IR.time)) {
 		if (IR.time > IR.time_higher_limit)
 			return -1;
@@ -315,7 +320,8 @@ inline int8_t IR_test_if_shorter_gap(){
 	return -1;
 }
 
-inline void case4_algorithm(int8_t shorter_gap){
+inline uint8_t case4_algorithm(int8_t shorter_gap)
+{
 	if (IR.data[IR.bit - 1] == 0){
 		if (!INT_as_rising_edge()){
 			if (shorter_gap){
@@ -335,77 +341,67 @@ inline void case4_algorithm(int8_t shorter_gap){
 			}
 		}
 	}
-	INT_turn_edge();
 	IR.bit++;
 	if(IR.bit == IR.bit_limit){
-		IR.ignore = 0;
-		IR.state = 0;
-		IR.bit = 0;
-		INT_on_falling_edge();
+		return 1;
 	}
+	return 0;
 }
 
 ISR(INT1_vect, ISR_NOBLOCK)
-{	
+{
 	int8_t shorter_gap = IR_test_if_shorter_gap();
-	if ((shorter_gap == -1) && (!IR.state)) {
+	if ((shorter_gap == -1) && IR.state)
 		goto err;
-	}
-	switch(IR.state){
+	switch (IR.state) {
 	case 0:
-		VOL_decrease(0x3F);
-		IR.ignore = 1;
-		INT_on_rising_edge();
 		IR.state = 1;
-		IR.data[IR.bit] = 1;
-		IR.bit = 1;
-		timer2_reset();
+		IR.ignore = 1;
+		IR.data[0] = 1;
 		break;
 	case 1:
-		if (shorter_gap) {
-			INT_on_falling_edge();
-			IR.state = 2;
-			IR.data[IR.bit] = 1;
-			IR.bit++;
-		} else {
+		if (!shorter_gap)
 			goto err;
-		}
+		IR.state = 2;
+		IR.data[1] = 1;
 		break;
 	case 2:
-		if (shorter_gap) {
-			INT_on_rising_edge();
-			IR.state = 3;
-		} else {
+		if (!shorter_gap)
 			goto err;
-		}
-		break;
+		IR.state = 3;
+		break;	
 	case 3:
 		if (shorter_gap) {
-			IR.data[IR.bit] = 1;
+			IR.data[2] = 1;
 			IR.state = 5;
 		} else {
-			IR.data[IR.bit] = 0;
-			IR.state = 4;		
+			IR.data[2] = 0;
+			IR.state = 4;
 		}
-		IR.bit++;
-		INT_on_falling_edge();
+		IR.bit = 3;
 		break;
-	case 4: 
-		case4_algorithm(shorter_gap);
+	case 4:
+		if (case4_algorithm(shorter_gap)) {
+			IR.ignore = 0;
+			IR.state = 0;
+			IR.bit = 0;
+			INT_on_falling_edge();
+			return;
+		}
 		break;
 	case 5:
-		INT_turn_edge();
 		IR.state = 4;
 		break;
 	default:
 		goto err;
 	}
-			
+	INT_turn_edge();
+	return;
 err:
 	IR.state = 0;
 	IR.bit = 0;
-	IR.time = 0;
 	IR.ignore = 1;
 	INT_on_falling_edge();
+	return;
 }
 

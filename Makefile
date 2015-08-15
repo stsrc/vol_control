@@ -1,5 +1,5 @@
 PRG            = vol_control
-OBJ            = main.o
+OBJ            = main.o timer2.o INT.o
 #MCU_TARGET     = at90s2313
 #MCU_TARGET     = at90s2333
 #MCU_TARGET     = at90s4414
@@ -75,7 +75,9 @@ $(PRG).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # dependency:
-main.o: main.c
+main.o: main.c timer2.o INT.o
+timer2.o: timer2.c
+INT.o: INT.c
 
 clean:
 	rm -rf *.o $(PRG).elf *.eps *.png *.pdf *.bak 
