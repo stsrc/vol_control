@@ -14,6 +14,7 @@ void pins_init()
 	PORTC = 0;
 	DDRD = 0xff;
 	PORTD = 0;
+	REL_1_1();
 	DDRD &= ~(_BV(BTN1) | _BV(BTN2) | _BV(BTN3));
 	DDRD &= ~_BV(IR_REMOTE);
 	PORTD |= _BV(BTN1) | _BV(BTN2) | _BV(BTN3);

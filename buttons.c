@@ -1,34 +1,27 @@
 #include "buttons.h"
 
 struct BTN_struct {
-	uint8_t cnt;	
+	uint8_t cnt;
+	uint8_t pins;	
 };
 
 static struct BTN_struct btns;
 
 void BTN_init(){
 	btns.cnt = 3;
-	DDRD &= ~(_BV(BTN1) | _BV(BTN2) | _BV(BTN3));
-	PORTD |= _BV(BTN1) | _BV(BTN2) | _BV(BTN3);
+	btns.pins = _BV(BTN1) | _BV(BTN2) | _BV(BTN3);
+	DDRD &= ~btns.pins;
+	PORTD |= btns.pins;
 
 	//DEBUG
 	DDRD |= _BV(LED);
-	PORTD |= _BV(LED);
-}
-
-inline uint8_t pressed_check(){
-	uint8_t rt = 0;
-	uint8_t sum = _BV(BTN1) | _BV(BTN2) | _BV(BTN3);
-	rt = PIND & sum;
-	rt = ~rt;
-	rt = rt & sum;
-	return rt;
+	LED_ON();
 }
 
 void BTN_check(){
-	uint8_t pressed = pressed_check();
+	uint8_t pressed = (~PIND) & btns.pins;
 	if (pressed)
-		PORTD &= ~_BV(LED);
+		LED_OFF();
 	return;
 }
 
