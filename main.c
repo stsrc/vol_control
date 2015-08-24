@@ -4,6 +4,7 @@
 
 #include "macros.h"
 #include "IR.h"
+#include "buttons.h"
 
 void pins_init()
 {
@@ -25,10 +26,12 @@ int main(void)
 	pins_init();
 	PWM_init();
 	IR_init();
+	BTN_init();
 	sei();
 	VOL_decrease(0x3F);
 	while(1){
-		IR_perform_action();		
+		IR_perform_action();
+		BTN_check();	
 	}
 	return 0;
 }
