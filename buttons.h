@@ -7,5 +7,6 @@
 #include "VOL.h"
 
 void BTN_init();
-void BTN_check();
+void BTN_action();
+
 #endif

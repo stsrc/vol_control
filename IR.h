@@ -10,5 +10,5 @@
 #include "VOL.h"
 
 void IR_init();
-uint8_t IR_perform_action();
+uint8_t IR_action();
 #endif

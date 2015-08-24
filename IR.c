@@ -70,7 +70,7 @@ static inline uint8_t IR_get_instruction()
 	return instruction;
 }
 
-uint8_t IR_perform_action()
+uint8_t IR_action()
 {
 	uint8_t toggle, device, instruction;
 	if(IR.ignore)

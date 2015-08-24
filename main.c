@@ -31,8 +31,8 @@ int main(void)
 	sei();
 	VOL_decrease(0x3F);
 	while(1){
-		IR_perform_action();
-		BTN_check();	
+		IR_action();
+		BTN_action();	
 	}
 	return 0;
 }
