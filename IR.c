@@ -1,5 +1,16 @@
 #include "IR.h"
 
+struct IR_struct{
+	volatile uint8_t state;
+	uint8_t time;
+	const uint8_t time_limit;
+	const uint8_t time_lower_limit;
+	const uint8_t time_higher_limit;
+	volatile uint8_t bit;
+	volatile uint8_t ignore;
+	volatile uint8_t data[14];
+	const uint8_t bit_limit;
+};
 
 static struct IR_struct IR = {
 	.state = 0,
@@ -30,12 +41,12 @@ void IR_init()
 	GICR |= _BV(INT1);
 }
 
-uint8_t IR_get_toggle()
+inline uint8_t IR_get_toggle()
 {
 	return IR.data[2];
 }
 
-uint8_t IR_get_device()
+inline uint8_t IR_get_device()
 {
 	uint8_t device = 0;
 	for (uint8_t it = 3; it < 8; it++) {
@@ -47,7 +58,7 @@ uint8_t IR_get_device()
 	return device;
 }
 
-uint8_t IR_get_instruction()
+inline uint8_t IR_get_instruction()
 {
 	uint8_t instruction = 0;
 	for (uint8_t it = 8; it < 14; it++) {
@@ -89,7 +100,7 @@ uint8_t IR_perform_action()
 }
 
 
-int8_t IR_test_if_shorter_gap()
+inline int8_t IR_test_if_shorter_gap()
 {
 	if (timer2_get_val(&IR.time)) {
 		if (IR.time > IR.time_higher_limit)
@@ -108,7 +119,7 @@ int8_t IR_test_if_shorter_gap()
 	return -1;
 }
 
-uint8_t IR_case4_algorithm(int8_t shorter_gap)
+inline uint8_t IR_case4_algorithm(int8_t shorter_gap)
 {
 	if (IR.data[IR.bit - 1] == 0){
 		if (!INT_as_rising_edge()){
