@@ -9,6 +9,7 @@
 #define IR_REMOTE PD3
 #define BTN2 PD5
 #define BTN1 PD6
+#define BTN3 PD7
 #define LED PD7
 
 #define PREAMP_CODE 0 /*like a TV, but it's only DIY-project, so doesn't metter.*/

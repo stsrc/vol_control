@@ -72,11 +72,9 @@ uint8_t IR_perform_action()
 	switch(instruction){
 	case CHANNEL_1:
 		REL_1_1();
-		LED_OFF();
 		break;
 	case CHANNEL_2:
 		REL_1_0();
-		LED_ON();
 		break;
 	case VOL_INCREASE:
 		VOL_increase(1);

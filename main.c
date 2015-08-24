@@ -13,12 +13,9 @@ void pins_init()
 	PORTC = 0;
 	DDRD = 0xff;
 	PORTD = 0;
-	DDRD &= ~(_BV(BTN1) | _BV(BTN2));
+	DDRD &= ~(_BV(BTN1) | _BV(BTN2) _BV(BTN3));
 	DDRD &= ~_BV(IR_REMOTE);
-
-	DDRD |= _BV(LED);
-
-	PORTD |= _BV(BTN1) | _BV(BTN2);
+	PORTD |= _BV(BTN1) | _BV(BTN2) | _BV(BTN3);
 	PORTD |= _BV(CUR_STAGE_MUTE);
 	CS_HIGH();
 }
@@ -29,8 +26,7 @@ int main(void)
 	PWM_init();
 	IR_init();
 	sei();
-	VOL_increase(0x3F);
-	LED_ON();
+	VOL_decrease(0x3F);
 	while(1){
 		IR_perform_action();		
 	}

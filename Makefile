@@ -1,4 +1,3 @@
-#!/bin/bash
 PRG            = vol_control
 OBJ            = main.o timer2.o INT.o PWM.o IR.o VOL.o
 MCU_TARGET     = atmega8
@@ -7,16 +6,15 @@ OPTIMIZE       = -Os
 
 DEFS           = -D__AVR_ATmega8__ -DF_CPU=8000000UL 
 WARNS	       = -Wall
-LIBS           =
-PATH=/home/konrad/Programming/eb/avr8-gnu-toolchain-linux_x86_64
+PATH=/home/konrad/Programming/eb/avr_toolchain
 
 
 CC=$(PATH)/bin/avr-gcc
 
 # Override is only needed by avr-lib build system.
 
-override CFLAGS        = -g $(WARNS) $(OPTIMIZE) -mmcu=$(MCU_TARGET) $(DEFS) -std=gnu99
-override LDFLAGS       = -Wl,-Map,$(PRG).map
+CFLAGS        =  $(WARNS) $(OPTIMIZE) -mmcu=$(MCU_TARGET) $(DEFS) -std=gnu99
+LDFLAGS       = -Wl,-Map,$(PRG).map
 
 OBJCOPY=$(PATH)/bin/avr-objcopy
 OBJDUMP=$(PATH)/bin/avr-objdump
@@ -30,9 +28,12 @@ $(PRG).elf: $(OBJ)
 	$(CC) -c $(CFLAGS) $< -o $@
 	$(CC) -MM $(CFLAGS) $< > $*.d
 
+%.o: %.s
+	$(CC) -c $(CFLAGS) $< -o $@
+
 clean:
-	rm -rf *.o $(PRG).elf *.eps *.png *.pdf *.bak 
-	rm -rf *.lst *.map $(EXTRA_CLEAN_FILES)
+	rm -f *.o $(PRG).elf *.eps *.png *.pdf *.bak 
+	rm -f *.lst *.map $(EXTRA_CLEAN_FILES)
 
 lst:  $(PRG).lst
 
