@@ -1,4 +1,4 @@
 #!/bin/bash
-make
-sudo avrdude -p m8 -c usbasp -U f:w:vol_control.hex
+LANG=C make
+avrdude -p m8 -c usbasp -U f:w:vol_control.hex
 
