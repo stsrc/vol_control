@@ -10,7 +10,7 @@
 #define BTN2 PD5
 #define BTN1 PD6
 #define BTN3 PD7
-#define LED PD7
+#define LED PD4
 
 #define PREAMP_CODE 0 /*like a TV, but it's only DIY-project, so doesn't metter.*/
 #define CHANNEL_1 1

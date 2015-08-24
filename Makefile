@@ -1,5 +1,5 @@
 PRG            = vol_control
-OBJ            = main.o timer2.o PWM.o IR.o VOL.o
+OBJ            = main.o timer2.o buttons.o PWM.o IR.o VOL.o
 MCU_TARGET     = atmega8
 
 OPTIMIZE       = -Os
