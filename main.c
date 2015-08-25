@@ -4,7 +4,7 @@
 
 #include "macros.h"
 #include "IR.h"
-#include "INT0.h"
+#include "HDPHNS.h"
 #include "buttons.h"
 
 void pins_init()
@@ -17,7 +17,6 @@ void pins_init()
 	PORTD = 0;
 
 	REL_1_1();
-	PWR_STAGE_ON();
 	DDRD &= ~(_BV(BTN1) | _BV(BTN2) | _BV(BTN3));
 	DDRD &= ~_BV(IR_REMOTE); //input without pull-up
 	DDRD &= ~_BV(JACK_INT); //input without pull-up
@@ -29,14 +28,15 @@ int main(void)
 {
 	pins_init();
 	PWM_init();
-	INT0_init();
+	HDPHNS_init();
 	IR_init();
 	BTN_init();
 	sei();
 	VOL_decrease(0x3F);
 	while(1){
 		IR_action();
-		BTN_action();	
+		BTN_action();
+		HDPHNS_action();
 	}
 	return 0;
 }
