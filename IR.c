@@ -37,7 +37,7 @@ void IR_init()
 	DDRD &= ~_BV(IR_REMOTE);
 	PORTD |= _BV(IR_REMOTE);
 	timer2_init();
-	INT_on_falling_edge();
+	INT1_on_falling_edge();
 	GICR |= _BV(INT1);
 }
 
@@ -123,7 +123,7 @@ static inline int8_t IR_test_if_shorter_gap()
 static inline uint8_t IR_case4_algorithm(int8_t shorter_gap)
 {
 	if (IR.data[IR.bit - 1] == 0){
-		if (!INT_as_rising_edge()){
+		if (!INT1_as_rising_edge()){
 			if (shorter_gap){
 				IR.data[IR.bit] = 0;
 				IR.state = 5;
@@ -132,7 +132,7 @@ static inline uint8_t IR_case4_algorithm(int8_t shorter_gap)
 			}
 		}
 	} else {
-		if (INT_as_rising_edge()){
+		if (INT1_as_rising_edge()){
 			if(shorter_gap){
 				IR.data[IR.bit] = 1;
 				IR.state = 5;
@@ -185,7 +185,7 @@ ISR(INT1_vect, ISR_NOBLOCK)
 			IR.ignore = 0;
 			IR.state = 0;
 			IR.bit = 0;
-			INT_on_falling_edge();
+			INT1_on_falling_edge();
 			return;
 		}
 		break;
@@ -195,12 +195,13 @@ ISR(INT1_vect, ISR_NOBLOCK)
 	default:
 		goto err;
 	}
-	INT_turn_edge();
+	INT1_turn_edge();
 	return;
 err:
 	IR.state = 0;
 	IR.bit = 0;
 	IR.ignore = 1;
-	INT_on_falling_edge();
+	INT1_on_falling_edge();
 	return;
 }
+

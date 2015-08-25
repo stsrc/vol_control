@@ -26,9 +26,6 @@ void BTN_init()
 		while(1);
 	for (uint8_t it = 0; it < btns.no; it++)
 		btns.cntrs[it] = 0;
-	//DEBUG
-	DDRD |= _BV(LED);
-	LED_ON();
 }
 
 static inline uint8_t BTN_check()

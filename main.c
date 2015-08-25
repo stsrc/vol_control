@@ -4,6 +4,7 @@
 
 #include "macros.h"
 #include "IR.h"
+#include "INT0.h"
 #include "buttons.h"
 
 void pins_init()
@@ -14,11 +15,13 @@ void pins_init()
 	PORTC = 0;
 	DDRD = 0xff;
 	PORTD = 0;
+
 	REL_1_1();
+	PWR_STAGE_ON();
 	DDRD &= ~(_BV(BTN1) | _BV(BTN2) | _BV(BTN3));
-	DDRD &= ~_BV(IR_REMOTE);
+	DDRD &= ~_BV(IR_REMOTE); //input without pull-up
+	DDRD &= ~_BV(JACK_INT); //input without pull-up
 	PORTD |= _BV(BTN1) | _BV(BTN2) | _BV(BTN3);
-	PORTD |= _BV(CUR_STAGE_MUTE);
 	CS_HIGH();
 }
 
@@ -26,6 +29,7 @@ int main(void)
 {
 	pins_init();
 	PWM_init();
+	INT0_init();
 	IR_init();
 	BTN_init();
 	sei();

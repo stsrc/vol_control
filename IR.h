@@ -5,7 +5,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "macros.h"
-#include "INT.h"
+#include "INT1.h"
 #include "timer2.h"
 #include "VOL.h"
 
