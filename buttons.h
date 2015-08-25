@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <avr/io.h>
+#include <stdlib.h>
 #include "macros.h"
 #include "VOL.h"
 

@@ -30,5 +30,6 @@
 
 #define REL_1_1() PORTB |= _BV(REL_1)
 #define REL_1_0() PORTB &= ~_BV(REL_1)
+#define REL_SWITCH() PORTB ^= _BV(REL_1)
 
 #endif

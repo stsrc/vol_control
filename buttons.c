@@ -1,10 +1,14 @@
 #include "buttons.h"
-#include <stdlib.h>
 
 struct BTN_struct {
 	const uint8_t no;
 	const uint8_t pins;
-	uint8_t *cntrs;
+	/*
+	 * XXX: if fclk is higher than 8MHz, think about changing counters size to 32 bits,
+	 * because delay caused by debounce function may not be sufficient 
+	 * (if 2^32 is to long - adjust delay with modulo)
+	 */
+	uint16_t *cntrs;
 };
 
 static struct BTN_struct btns = {
@@ -76,13 +80,13 @@ static inline uint8_t BTN_debounce()
 static inline void BTN_perform(uint8_t action)
 {
 	if (_BV(BTN1) & action) {
-		LED_OFF();
+		VOL_decrease(1);
 	}
 	if (_BV(BTN2) & action) {
-		LED_ON();
+		VOL_increase(1);
 	}
 	if (_BV(BTN3) & action) {
-		LED_OFF();
+		REL_SWITCH();
 	}
 }
 
