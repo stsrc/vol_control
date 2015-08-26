@@ -28,10 +28,11 @@ void PWM_stupid_turn_on(int8_t direction)
 	else if (direction == -1)
 		PWM_set_on_compare_match();
 	TIMSK |= _BV(OCIE1B);
+	ADC_val_nearby(SWITCH_LEVEL, DEVIATION);
 	TCCR1B |= _BV(CS11);
 }
 
-void PWM_init()
+void POT_init()
 {
 	/*MODE 5, look to the datasheet, Waveform generation mode, p. 98 */
 	TCCR1A = _BV(WGM10);
@@ -39,5 +40,6 @@ void PWM_init()
 	/*End of setting mode*/	
 	OCR1B = 128;	
 	PWM_stupid_turn_off();
+	ADC_init();
 }
 

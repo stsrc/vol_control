@@ -27,7 +27,7 @@ void pins_init()
 int main(void)
 {
 	pins_init();
-	PWM_init();
+	POT_init();
 	HDPHNS_init();
 	IR_init();
 	BTN_init();

@@ -1,6 +1,5 @@
 #include "VOL.h"
 
-
 static volatile int8_t volume = 0;
 static volatile int8_t steps = 0;
 static volatile int8_t direction = 0;
@@ -77,7 +76,6 @@ void VOL_decrease(uint8_t steps_vol)
 	_delay_ms(1);
 	PWM_stupid_turn_on(direction);
 }
-
 
 ISR(TIMER1_COMPB_vect, ISR_BLOCK)
 {

@@ -36,4 +36,7 @@
 #define PWR_STAGE_ON() PORTD |= _BV(PWR_STAGE)
 #define PWR_STAGE_SWITCH() PORTD ^= _BV(PWR_STAGE)
 
+#define SWITCH_LEVEL 512.0f
+#define DEVIATION 0.2f
+
 #endif
