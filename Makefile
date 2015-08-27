@@ -22,7 +22,7 @@ OBJDUMP=$(PATH)/bin/avr-objdump
 all: $(PRG).elf lst text eeprom
 
 $(PRG).elf: $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
