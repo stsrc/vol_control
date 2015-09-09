@@ -35,6 +35,7 @@ ISR(ADC_vect){
 	ADC_val += ADC;
 	ADC_cnt++;
 	if(ADC_cnt == 2){
+		ADC_cnt = 0;
 		ADC_result = ADC_val / 2;
 		ADC_val = 0;
 	}
