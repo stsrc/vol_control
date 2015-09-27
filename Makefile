@@ -6,18 +6,17 @@ OPTIMIZE       = -Os
 
 DEFS           = -D__AVR_ATmega8__ -DF_CPU=8000000UL 
 WARNS	       = -Wall
-PATH=/home/konrad/Programming/eb/avr_toolchain
+TOOL_PATH=/home/konrad/Programming/eb/avr_toolchain
 
-
-CC=$(PATH)/bin/avr-gcc
+CC=$(TOOL_PATH)/bin/avr-gcc
 
 # Override is only needed by avr-lib build system.
 
 CFLAGS        =  $(WARNS) $(OPTIMIZE) -mmcu=$(MCU_TARGET) $(DEFS) -std=gnu99
-LDFLAGS       = -Wl,-Map,$(PRG).map
+LDFLAGS       = -Wl,-Map,$(PRG).map 
 
-OBJCOPY=$(PATH)/bin/avr-objcopy
-OBJDUMP=$(PATH)/bin/avr-objdump
+OBJCOPY=$(TOOL_PATH)/bin/avr-objcopy
+OBJDUMP=$(TOOL_PATH)/bin/avr-objdump
 
 all: $(PRG).elf lst text eeprom
 
@@ -32,8 +31,8 @@ $(PRG).elf: $(OBJ)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	rm -f *.o $(PRG).elf *.eps *.png *.pdf *.bak 
-	rm -f *.lst *.map $(EXTRA_CLEAN_FILES)
+	rm -f  $(PRG).elf $(OBJ)
+	rm -f  $(EXTRA_CLEAN_FILES) *.d *.lst *.map
 
 lst:  $(PRG).lst
 

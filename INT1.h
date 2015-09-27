@@ -1,7 +1,5 @@
 #ifndef _INT1_H_
 #define _INT1_H_
-
-#include <stdio.h>
 #include <avr/io.h>
 
 inline uint8_t INT1_as_rising_edge()

@@ -2,11 +2,9 @@
 #define _PWM_H_
 
 #include <avr/io.h>
-#include <stdio.h>
 #include <avr/interrupt.h>
 
 #include "macros.h"
-#include "VOL.h"
 #include "ADC.h"
 
 void PWM_clear_on_compare_match();

@@ -1,7 +1,7 @@
 #ifndef _TIMER2_H_
 #define _TIMER2_H_
 
-#include <stdio.h>
+#include <avr/io.h>
 #include <util/atomic.h>
 
 void timer2_reset();

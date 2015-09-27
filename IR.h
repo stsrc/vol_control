@@ -1,7 +1,6 @@
 #ifndef _IR_H_
 #define _IR_H_
 
-#include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "macros.h"

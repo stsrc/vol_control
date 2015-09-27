@@ -28,7 +28,7 @@ void BTN_init()
 		btns.cntrs[it] = 0;
 }
 
-static inline uint8_t BTN_check()
+static uint8_t BTN_check()
 {
 	return ((~PIND) & btns.pins);
 }
@@ -67,7 +67,7 @@ static inline uint8_t BTN_debounce()
 			else
 				rt |= _BV(BTN3);
 		}
-	} else if (pressed & _BV(BTN2)) {
+	} else if (pressed & _BV(BTN3)) {
 		btns.cntrs[2]++;
 	}
 	return rt;
