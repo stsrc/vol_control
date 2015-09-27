@@ -41,12 +41,12 @@ void IR_init()
 	GICR |= _BV(INT1);
 }
 
-static uint8_t IR_get_toggle()
+static inline uint8_t IR_get_toggle()
 {
 	return IR.data[2];
 }
 
-static uint8_t IR_get_device()
+static inline uint8_t IR_get_device()
 {
 	uint8_t device = 0;
 	for (uint8_t it = 3; it < 8; it++) {
@@ -58,7 +58,7 @@ static uint8_t IR_get_device()
 	return device;
 }
 
-static uint8_t IR_get_instruction()
+static inline uint8_t IR_get_instruction()
 {
 	uint8_t instruction = 0;
 	for (uint8_t it = 8; it < 14; it++) {
