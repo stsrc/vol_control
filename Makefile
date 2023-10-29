@@ -6,7 +6,7 @@ OPTIMIZE       = -Os
 
 DEFS           = -D__AVR_ATmega8__ -DF_CPU=8000000UL 
 WARNS	       = -Wall
-TOOL_PATH=/home/konrad/Programming/eb/avr_toolchain
+TOOL_PATH=/usr
 
 CC=$(TOOL_PATH)/bin/avr-gcc
 
