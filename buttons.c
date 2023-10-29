@@ -5,7 +5,7 @@ struct BTN_struct {
 	const uint8_t pins;
 	/*
 	 * XXX: if fclk is higher than 8MHz, think about changing counters size to 32 bits,
-	 * because delay caused by debounce function may not be sufficient 
+	 * because delay caused by debounce function may not be sufficient
 	 * (if 2^32 is to long - adjust delay with modulo)
 	 */
 	uint16_t *cntrs;
@@ -33,43 +33,32 @@ static uint8_t BTN_check()
 	return ((~PIND) & btns.pins);
 }
 
-static inline uint8_t BTN_debounce()
+static uint8_t BTN_debounce_(uint16_t *cntr,
+			     const uint8_t btn,
+			     const uint8_t pressed)
 {
 	uint8_t rt = 0;
+	if (*cntr) {
+		(*cntr)++;
+		if (!*cntr) {
+			if (BTN_check() & _BV(btn)) {
+				(*cntr)++;
+			} else {
+				rt |= _BV(btn);
+			}
+		}
+	} else if (pressed & _BV(btn)) {
+		(*cntr)++;
+	}
+	return rt;
+}
+
+static inline uint8_t BTN_debounce()
+{
 	uint8_t pressed = BTN_check();
-	if (btns.cntrs[0]) {
-		btns.cntrs[0]++;
-		if (!btns.cntrs[0]) {
-			if (BTN_check() & _BV(BTN1))
-				btns.cntrs[0]++;
-			else
-				rt |= _BV(BTN1);
-		}
-	} else if (pressed & _BV(BTN1)) {
-		btns.cntrs[0]++;
-	}
-	if (btns.cntrs[1]) {
-		btns.cntrs[1]++;
-		if (!btns.cntrs[1]) {
-			if (BTN_check() & _BV(BTN2))
-				btns.cntrs[1]++;
-			else
-				rt |= _BV(BTN2);
-		}
-	} else if (pressed & _BV(BTN2)) {
-		btns.cntrs[1]++;
-	}
-	if (btns.cntrs[2]) {
-		btns.cntrs[2]++;
-		if (!btns.cntrs[2]) {
-			if (BTN_check() & _BV(BTN3))
-				btns.cntrs[2]++;
-			else
-				rt |= _BV(BTN3);
-		}
-	} else if (pressed & _BV(BTN3)) {
-		btns.cntrs[2]++;
-	}
+	uint8_t rt = BTN_debounce_(&btns.cntrs[0], BTN1, pressed);
+	rt |= BTN_debounce_(&btns.cntrs[1], BTN2, pressed);
+	rt |= BTN_debounce_(&btns.cntrs[2], BTN3, pressed);
 	return rt;
 }
 
